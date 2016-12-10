@@ -44,19 +44,36 @@ class Characteristic:
     def addDescriptor(self, descriptor):
         self.descriptors[descriptor['uuid']] = descriptor
 
+    def properties_to_str(self):
+        result = []
+        PROPERTIES_DESC = ["b", "r", "W", "w", "n", "i", "a", "e"]
+        property_bit = 1
+        for desc in PROPERTIES_DESC:
+            if self.properties & property_bit:
+                result.append(desc)
+            else:
+                result.append("-")
+            property_bit <<= 1
+
+        return "".join(result)
+
     def __str__(self):
-        result = [hex(self.value_handle)]
+        result = []
+        result.append("%(handle)#06x" % {'handle': self.value_handle})
+        result.append(self.uuid)
+        result.append(self.properties_to_str())
+
         name_desc = self.descriptors.get(UUID_CHARACTERISTIC_USER_DESC)
         if name_desc:
             result.append(req.read_by_handle(name_desc['handle'])[0])
-        
+
         char_info = UUID_CHARACTERISTICS.get(self.uuid)            
         if char_info != None:
             prefix = char_info.get('prefix')
             fmt = char_info.get('fmt')
             suffix = char_info.get('suffix')
             value = ""
-            try:
+            try:                
                 value = req.read_by_handle(self.value_handle)[0]
             except Exception as e:
                 value = "<" + str(e) + ">"
@@ -69,7 +86,7 @@ class Characteristic:
             result.append(str(value))
             if suffix:
                 result.append(suffix)
-        
+
         return " ".join(result)
 
 characteristics = {}
@@ -88,5 +105,14 @@ for desc in descs:
     else:
         characteristics[handle].addDescriptor(desc) 
 
+
+print("GATT Characteristics of BLE Device " + ADDRESS)
+print
+print("HANDLE UUID                                 PROP     DESCRIPTION")
+
 for handle, char in characteristics.iteritems():   
     print(str(char))
+
+print
+print("b: broadcast    r: read        W: write without response         w: write")
+print("n: notify       i: indicate    a: authenticated signed writes    e: extended properties")
