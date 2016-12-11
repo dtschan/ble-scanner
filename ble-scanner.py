@@ -15,6 +15,7 @@ ADDRESS = sys.argv[1]
 # Source: https://www.bluetooth.com/specifications/gatt/services
 UUID_SERVICE_DECL = "00002800-0000-1000-8000-00805f9b34fb"
 UUID_CHARACTERISTIC_DECL = "00002803-0000-1000-8000-00805f9b34fb"
+UUID_CLIENT_CHARACTERISTIC_CONFIGURATION = "00002902-0000-1000-8000-00805f9b34fb"
 UUID_CHARACTERISTIC_USER_DESC = "00002901-0000-1000-8000-00805f9b34fb"
 
 # Source: https://www.bluetooth.com/specifications/gatt/characteristics
@@ -22,7 +23,7 @@ UUID_CHARACTERISTICS = {
     "00002a00-0000-1000-8000-00805f9b34fb": {"prefix": "Device name:"},
     "00002a01-0000-1000-8000-00805f9b34fb": {"prefix": "Appearance:", "fmt": "<H"},
     "00002a04-0000-1000-8000-00805f9b34fb": {"prefix": "Peripheral preferred connection parameters:", "fmt": "<HHHH"},
-    "00002a05-0000-1000-8000-00805f9b34fb": {"prefix": "Service changed:"},
+    "00002a05-0000-1000-8000-00805f9b34fb": {"prefix": "Service changed"},
     "00002a19-0000-1000-8000-00805f9b34fb": {"prefix": "Battery level:", "fmt": "<B", "suffix": "%"},
     "00002a26-0000-1000-8000-00805f9b34fb": {"prefix": "Firmware revision:"},
     "00002a28-0000-1000-8000-00805f9b34fb": {"prefix": "Software revision:"},
@@ -63,6 +64,12 @@ class Characteristic:
         result.append(self.uuid)
         result.append(self.properties_to_str())
 
+        ccc_desc = self.descriptors.get(UUID_CLIENT_CHARACTERISTIC_CONFIGURATION)
+        if ccc_desc:
+            result.append("%(handle)#06x" % ccc_desc)
+        else:
+            result.append("      ")
+
         name_desc = self.descriptors.get(UUID_CHARACTERISTIC_USER_DESC)
         if name_desc:
             result.append(req.read_by_handle(name_desc['handle'])[0])
@@ -74,7 +81,8 @@ class Characteristic:
             suffix = char_info.get('suffix')
             value = ""
             try:                
-                value = req.read_by_handle(self.value_handle)[0]
+                if self.properties & 0x02:
+                    value = req.read_by_handle(self.value_handle)[0]
             except Exception as e:
                 value = "<" + str(e) + ">"
             if prefix:
@@ -108,7 +116,7 @@ for desc in descs:
 
 print("GATT Characteristics of BLE Device " + ADDRESS)
 print
-print("HANDLE UUID                                 PROP     DESCRIPTION")
+print("HANDLE UUID                                 PROP     CCC    DESCRIPTION")
 
 for handle, char in characteristics.iteritems():   
     print(str(char))
